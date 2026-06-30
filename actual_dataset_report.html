@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Actual Dataset – OCR Evaluation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .header p {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    /* ── Summary Cards ── */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto 40px;
+    }
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 14px;
+      padding: 22px 20px;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .card .value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .card .label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .card.total   .value { color: #60a5fa; }
+    .card.correct .value { color: #34d399; }
+    .card.wrong   .value { color: #f87171; }
+    .card.acc     .value { color: #27ae60; }
+
+    /* ── Filters ── */
+    .controls {
+      max-width: 1100px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-btn {
+      padding: 7px 18px;
+      border-radius: 999px;
+      border: 1px solid #2d3148;
+      background: #1e2130;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-family: inherit;
+      transition: all 0.18s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: #fff;
+    }
+    .search {
+      margin-left: auto;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid #2d3148;
+      background: #1e2130;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 0.82rem;
+      outline: none;
+      width: 220px;
+      transition: border-color 0.18s;
+    }
+    .search:focus { border-color: #6366f1; }
+    .search::placeholder { color: #475569; }
+
+    /* ── Table ── */
+    .table-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #2d3148;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    thead tr {
+      background: #1a1d2e;
+    }
+    th {
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+      border-bottom: 1px solid #2d3148;
+    }
+    tbody tr {
+      background: #161827;
+      transition: background 0.15s;
+      border-bottom: 1px solid #1e2130;
+    }
+    tbody tr:hover { background: #1e2130; }
+    tbody tr:last-child { border-bottom: none; }
+    td {
+      padding: 11px 16px;
+      vertical-align: middle;
+    }
+
+    /* image cell */
+    td.img-cell img {
+      height: 44px;
+      max-width: 200px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid #2d3148;
+      background: #fff;
+      display: block;
+    }
+
+    /* text cells */
+    .mono {
+      font-family: 'Courier New', monospace;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+    }
+
+    /* badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge.correct { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+    .badge.incorrect { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+
+    /* source tag */
+    .source-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      color: #94a3b8;
+    }
+
+    /* hidden rows */
+    tr.hidden { display: none; }
+
+    /* footer */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      color: #334155;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Actual Dataset — OCR Evaluation</h1>
+  <p>75 real-world blueprint crop images · model: <code>best_model.pth</code></p>
+</div>
+
+<div class="summary">
+  <div class="card total">
+    <div class="value">75</div>
+    <div class="label">Total Images</div>
+  </div>
+  <div class="card correct">
+    <div class="value">58</div>
+    <div class="label">Correct</div>
+  </div>
+  <div class="card wrong">
+    <div class="value">17</div>
+    <div class="label">Incorrect</div>
+  </div>
+  <div class="card acc">
+    <div class="value">77.3%</div>
+    <div class="label">Accuracy</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="filter-btn active" onclick="filterRows('all', this)">All</button>
+  <button class="filter-btn" onclick="filterRows('incorrect', this)">Incorrect only</button>
+  <button class="filter-btn" onclick="filterRows('correct', this)">Correct only</button>
+  <input class="search" type="text" id="searchBox" placeholder="Search ground truth or prediction…" oninput="applySearch()" />
+</div>
+
+<div class="table-wrap">
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Crop Image</th>
+        <th>Filename</th>
+        <th>Ground Truth</th>
+        <th>Prediction</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-status="incorrect" data-gt="(67.0,76.0±5)" data-pred="167.0.78.0±5)">
+        <td style="color:#475569;font-size:0.78rem;">1</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_83.jpg" alt="jupiter_crop_83.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_83.jpg</span></td>
+        <td class="mono">(67.0,76.0±5)</td>
+        <td class="mono">167.0.78.0±5)</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="2× 43° min" data-pred="2× 48° min">
+        <td style="color:#475569;font-size:0.78rem;">2</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_18.jpg" alt="msil_crop_18.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_18.jpg</span></td>
+        <td class="mono">2× 43° MIN</td>
+        <td class="mono">2× 48° MIN</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="(67.0,76.0±5)" data-pred="167.0.78.0±5)">
+        <td style="color:#475569;font-size:0.78rem;">3</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_11.jpg" alt="jupiter_crop_11.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_11.jpg</span></td>
+        <td class="mono">(67.0,76.0±5)</td>
+        <td class="mono">167.0.78.0±5)</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="0" data-pred="ø">
+        <td style="color:#475569;font-size:0.78rem;">4</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_126.jpg" alt="jupiter_crop_126.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_126.jpg</span></td>
+        <td class="mono">0</td>
+        <td class="mono">Ø</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="ø 245" data-pred="ø245">
+        <td style="color:#475569;font-size:0.78rem;">5</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_16.jpg" alt="jupiter_crop_16.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_16.jpg</span></td>
+        <td class="mono">Ø 245</td>
+        <td class="mono">Ø245</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="4×m8×1.25" data-pred="4x m8×x1.25">
+        <td style="color:#475569;font-size:0.78rem;">6</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_26.jpg" alt="msil_crop_26.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_26.jpg</span></td>
+        <td class="mono">4×M8×1.25</td>
+        <td class="mono">4X M8×x1.25</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="0237" data-pred="ø237">
+        <td style="color:#475569;font-size:0.78rem;">7</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_86.jpg" alt="jupiter_crop_86.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_86.jpg</span></td>
+        <td class="mono">0237</td>
+        <td class="mono">Ø237</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="ø60.0" data-pred="060.0">
+        <td style="color:#475569;font-size:0.78rem;">8</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_57.jpg" alt="jupiter_crop_57.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_57.jpg</span></td>
+        <td class="mono">Ø60.0</td>
+        <td class="mono">060.0</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="245" data-pred="ø245">
+        <td style="color:#475569;font-size:0.78rem;">9</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_88.jpg" alt="jupiter_crop_88.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_88.jpg</span></td>
+        <td class="mono">245</td>
+        <td class="mono">Ø245</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="ø9.9 (spher)" data-pred="ø8.816pher)">
+        <td style="color:#475569;font-size:0.78rem;">10</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_46.jpg" alt="msil_crop_46.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_46.jpg</span></td>
+        <td class="mono">Ø9.9 (SPHER)</td>
+        <td class="mono">Ø8.816PHER)</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="6.0 tyr" data-pred="6.0 typ">
+        <td style="color:#475569;font-size:0.78rem;">11</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_77.jpg" alt="jupiter_crop_77.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_77.jpg</span></td>
+        <td class="mono">6.0 TYR</td>
+        <td class="mono">6.0 TYP</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="35° ±3°" data-pred="35-±3°">
+        <td style="color:#475569;font-size:0.78rem;">12</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_119.jpg" alt="msil_crop_119.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_119.jpg</span></td>
+        <td class="mono">35° ±3°</td>
+        <td class="mono">35-±3°</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="4x m8 x1.25" data-pred="4x m8 m1.25">
+        <td style="color:#475569;font-size:0.78rem;">13</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_4.jpg" alt="polaris_crop_4.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_4.jpg</span></td>
+        <td class="mono">4x M8 x1.25</td>
+        <td class="mono">4X M8 M1.25</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="232.0 max" data-pred="ø232.0 max">
+        <td style="color:#475569;font-size:0.78rem;">14</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_87.jpg" alt="jupiter_crop_87.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_87.jpg</span></td>
+        <td class="mono">232.0 MAX</td>
+        <td class="mono">Ø232.0 MAX</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="is0 - 4038" data-pred="190  4036">
+        <td style="color:#475569;font-size:0.78rem;">15</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_15.jpg" alt="intra_crop_15.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_15.jpg</span></td>
+        <td class="mono">IS0 - 4038</td>
+        <td class="mono">190  4036</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="m12x1-6h" data-pred="m1x1-6h">
+        <td style="color:#475569;font-size:0.78rem;">16</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_16.jpg" alt="intra_crop_16.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_16.jpg</span></td>
+        <td class="mono">M12X1-6H</td>
+        <td class="mono">M1X1-6H</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="incorrect" data-gt="b.0" data-pred="8.0°">
+        <td style="color:#475569;font-size:0.78rem;">17</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_90.jpg" alt="jupiter_crop_90.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_90.jpg</span></td>
+        <td class="mono">B.0</td>
+        <td class="mono">8.0°</td>
+        <td><span class="badge incorrect">✗ Incorrect</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="101.8 ref" data-pred="101.8 ref">
+        <td style="color:#475569;font-size:0.78rem;">18</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_12.jpg" alt="jupiter_crop_12.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_12.jpg</span></td>
+        <td class="mono">101.8 REF</td>
+        <td class="mono">101.8 REF</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.3" data-pred="3.3">
+        <td style="color:#475569;font-size:0.78rem;">19</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_112.jpg" alt="jupiter_crop_112.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_112.jpg</span></td>
+        <td class="mono">3.3</td>
+        <td class="mono">3.3</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="18" data-pred="18">
+        <td style="color:#475569;font-size:0.78rem;">20</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_13.jpg" alt="msil_crop_13.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_13.jpg</span></td>
+        <td class="mono">18</td>
+        <td class="mono">18</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="ø50" data-pred="ø50">
+        <td style="color:#475569;font-size:0.78rem;">21</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_21.jpg" alt="msil_crop_21.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_21.jpg</span></td>
+        <td class="mono">Ø50</td>
+        <td class="mono">Ø50</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="23.3" data-pred="23.3">
+        <td style="color:#475569;font-size:0.78rem;">22</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_59.jpg" alt="jupiter_crop_59.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_59.jpg</span></td>
+        <td class="mono">23.3</td>
+        <td class="mono">23.3</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="0.5mm" data-pred="0.5mm">
+        <td style="color:#475569;font-size:0.78rem;">23</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_64.jpg" alt="msil_crop_64.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_64.jpg</span></td>
+        <td class="mono">0.5mm</td>
+        <td class="mono">0.5mm</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="7.2" data-pred="7.2">
+        <td style="color:#475569;font-size:0.78rem;">24</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_36.jpg" alt="polaris_crop_36.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_36.jpg</span></td>
+        <td class="mono">7.2</td>
+        <td class="mono">7.2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="15.0" data-pred="15.0">
+        <td style="color:#475569;font-size:0.78rem;">25</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_30.jpg" alt="polaris_crop_30.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_30.jpg</span></td>
+        <td class="mono">15.0</td>
+        <td class="mono">15.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="10.1" data-pred="10.1">
+        <td style="color:#475569;font-size:0.78rem;">26</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_27.jpg" alt="jupiter_crop_27.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_27.jpg</span></td>
+        <td class="mono">10.1</td>
+        <td class="mono">10.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.1" data-pred="3.1">
+        <td style="color:#475569;font-size:0.78rem;">27</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_53.jpg" alt="polaris_crop_53.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_53.jpg</span></td>
+        <td class="mono">3.1</td>
+        <td class="mono">3.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="80" data-pred="80">
+        <td style="color:#475569;font-size:0.78rem;">28</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_19.jpg" alt="polaris_crop_19.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_19.jpg</span></td>
+        <td class="mono">80</td>
+        <td class="mono">80</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="r94.0" data-pred="r94.0">
+        <td style="color:#475569;font-size:0.78rem;">29</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_124.jpg" alt="jupiter_crop_124.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_124.jpg</span></td>
+        <td class="mono">R94.0</td>
+        <td class="mono">R94.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="9.0" data-pred="9.0">
+        <td style="color:#475569;font-size:0.78rem;">30</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_92.jpg" alt="jupiter_crop_92.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_92.jpg</span></td>
+        <td class="mono">9.0</td>
+        <td class="mono">9.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="126" data-pred="126">
+        <td style="color:#475569;font-size:0.78rem;">31</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_23.jpg" alt="intra_crop_23.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_23.jpg</span></td>
+        <td class="mono">126</td>
+        <td class="mono">126</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="10.6" data-pred="10.6">
+        <td style="color:#475569;font-size:0.78rem;">32</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_74.jpg" alt="jupiter_crop_74.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_74.jpg</span></td>
+        <td class="mono">10.6</td>
+        <td class="mono">10.6</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="7.15" data-pred="7.15">
+        <td style="color:#475569;font-size:0.78rem;">33</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_127.jpg" alt="msil_crop_127.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_127.jpg</span></td>
+        <td class="mono">7.15</td>
+        <td class="mono">7.15</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="2× 4.3 ±0.2" data-pred="2× 4.3 ±0.2">
+        <td style="color:#475569;font-size:0.78rem;">34</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_17.jpg" alt="msil_crop_17.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_17.jpg</span></td>
+        <td class="mono">2× 4.3 ±0.2</td>
+        <td class="mono">2× 4.3 ±0.2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3°" data-pred="3°">
+        <td style="color:#475569;font-size:0.78rem;">35</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_12.jpg" alt="polaris_crop_12.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_12.jpg</span></td>
+        <td class="mono">3°</td>
+        <td class="mono">3°</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="36.9°" data-pred="36.9°">
+        <td style="color:#475569;font-size:0.78rem;">36</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_114.jpg" alt="msil_crop_114.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_114.jpg</span></td>
+        <td class="mono">36.9°</td>
+        <td class="mono">36.9°</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="-0.5" data-pred="-0.5">
+        <td style="color:#475569;font-size:0.78rem;">37</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_25.jpg" alt="msil_crop_25.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_25.jpg</span></td>
+        <td class="mono">-0.5</td>
+        <td class="mono">-0.5</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.1" data-pred="3.1">
+        <td style="color:#475569;font-size:0.78rem;">38</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_39.jpg" alt="jupiter_crop_39.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_39.jpg</span></td>
+        <td class="mono">3.1</td>
+        <td class="mono">3.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="56.6" data-pred="56.6">
+        <td style="color:#475569;font-size:0.78rem;">39</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_106.jpg" alt="msil_crop_106.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_106.jpg</span></td>
+        <td class="mono">56.6</td>
+        <td class="mono">56.6</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="9.5" data-pred="9.5">
+        <td style="color:#475569;font-size:0.78rem;">40</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_67.jpg" alt="msil_crop_67.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_67.jpg</span></td>
+        <td class="mono">9.5</td>
+        <td class="mono">9.5</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="81.871 max" data-pred="81.871 max">
+        <td style="color:#475569;font-size:0.78rem;">41</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_22.jpg" alt="intra_crop_22.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_22.jpg</span></td>
+        <td class="mono">81.871 MAX</td>
+        <td class="mono">81.871 MAX</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.1" data-pred="3.1">
+        <td style="color:#475569;font-size:0.78rem;">42</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_111.jpg" alt="jupiter_crop_111.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_111.jpg</span></td>
+        <td class="mono">3.1</td>
+        <td class="mono">3.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="24" data-pred="24">
+        <td style="color:#475569;font-size:0.78rem;">43</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_5.jpg" alt="polaris_crop_5.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_5.jpg</span></td>
+        <td class="mono">24</td>
+        <td class="mono">24</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="2" data-pred="2">
+        <td style="color:#475569;font-size:0.78rem;">44</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_8.jpg" alt="msil_crop_8.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_8.jpg</span></td>
+        <td class="mono">2</td>
+        <td class="mono">2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="30" data-pred="30">
+        <td style="color:#475569;font-size:0.78rem;">45</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_15.jpg" alt="msil_crop_15.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_15.jpg</span></td>
+        <td class="mono">30</td>
+        <td class="mono">30</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.2" data-pred="3.2">
+        <td style="color:#475569;font-size:0.78rem;">46</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_25.jpg" alt="jupiter_crop_25.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_25.jpg</span></td>
+        <td class="mono">3.2</td>
+        <td class="mono">3.2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.3" data-pred="3.3">
+        <td style="color:#475569;font-size:0.78rem;">47</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_55.jpg" alt="polaris_crop_55.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_55.jpg</span></td>
+        <td class="mono">3.3</td>
+        <td class="mono">3.3</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="50" data-pred="50">
+        <td style="color:#475569;font-size:0.78rem;">48</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_63.jpg" alt="polaris_crop_63.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_63.jpg</span></td>
+        <td class="mono">50</td>
+        <td class="mono">50</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="+0.3" data-pred="+0.3">
+        <td style="color:#475569;font-size:0.78rem;">49</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_4.jpg" alt="msil_crop_4.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_4.jpg</span></td>
+        <td class="mono">+0.3</td>
+        <td class="mono">+0.3</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="9.9" data-pred="9.9">
+        <td style="color:#475569;font-size:0.78rem;">50</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_55.jpg" alt="jupiter_crop_55.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_55.jpg</span></td>
+        <td class="mono">9.9</td>
+        <td class="mono">9.9</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="ø59.4 max" data-pred="ø59.4 max">
+        <td style="color:#475569;font-size:0.78rem;">51</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_41.jpg" alt="polaris_crop_41.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_41.jpg</span></td>
+        <td class="mono">Ø59.4 MAX</td>
+        <td class="mono">Ø59.4 MAX</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="313.2" data-pred="313.2">
+        <td style="color:#475569;font-size:0.78rem;">52</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_6.jpg" alt="msil_crop_6.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_6.jpg</span></td>
+        <td class="mono">313.2</td>
+        <td class="mono">313.2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="ø32" data-pred="ø32">
+        <td style="color:#475569;font-size:0.78rem;">53</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_58.jpg" alt="polaris_crop_58.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_58.jpg</span></td>
+        <td class="mono">Ø32</td>
+        <td class="mono">Ø32</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="45°" data-pred="45°">
+        <td style="color:#475569;font-size:0.78rem;">54</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_3.jpg" alt="intra_crop_3.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_3.jpg</span></td>
+        <td class="mono">45°</td>
+        <td class="mono">45°</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="7.2" data-pred="7.2">
+        <td style="color:#475569;font-size:0.78rem;">55</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_118.jpg" alt="jupiter_crop_118.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_118.jpg</span></td>
+        <td class="mono">7.2</td>
+        <td class="mono">7.2</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="90 ±1.5" data-pred="90 ±1.5">
+        <td style="color:#475569;font-size:0.78rem;">56</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_133.jpg" alt="msil_crop_133.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_133.jpg</span></td>
+        <td class="mono">90 ±1.5</td>
+        <td class="mono">90 ±1.5</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="ø0.05" data-pred="ø0.05">
+        <td style="color:#475569;font-size:0.78rem;">57</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_61.jpg" alt="msil_crop_61.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_61.jpg</span></td>
+        <td class="mono">Ø0.05</td>
+        <td class="mono">Ø0.05</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="55°" data-pred="55°">
+        <td style="color:#475569;font-size:0.78rem;">58</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_61.jpg" alt="polaris_crop_61.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_61.jpg</span></td>
+        <td class="mono">55°</td>
+        <td class="mono">55°</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="113" data-pred="113">
+        <td style="color:#475569;font-size:0.78rem;">59</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_28.jpg" alt="polaris_crop_28.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_28.jpg</span></td>
+        <td class="mono">113</td>
+        <td class="mono">113</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="95" data-pred="95">
+        <td style="color:#475569;font-size:0.78rem;">60</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_13.jpg" alt="intra_crop_13.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_13.jpg</span></td>
+        <td class="mono">95</td>
+        <td class="mono">95</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="4" data-pred="4">
+        <td style="color:#475569;font-size:0.78rem;">61</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_90.jpg" alt="msil_crop_90.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_90.jpg</span></td>
+        <td class="mono">4</td>
+        <td class="mono">4</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="23.0" data-pred="23.0">
+        <td style="color:#475569;font-size:0.78rem;">62</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_95.jpg" alt="jupiter_crop_95.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_95.jpg</span></td>
+        <td class="mono">23.0</td>
+        <td class="mono">23.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="23.0" data-pred="23.0">
+        <td style="color:#475569;font-size:0.78rem;">63</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_23.jpg" alt="jupiter_crop_23.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_23.jpg</span></td>
+        <td class="mono">23.0</td>
+        <td class="mono">23.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="ø8.9 ±0.1" data-pred="ø8.9 ±0.1">
+        <td style="color:#475569;font-size:0.78rem;">64</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_48.jpg" alt="msil_crop_48.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_48.jpg</span></td>
+        <td class="mono">Ø8.9 ±0.1</td>
+        <td class="mono">Ø8.9 ±0.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="119.25" data-pred="119.25">
+        <td style="color:#475569;font-size:0.78rem;">65</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_134.jpg" alt="msil_crop_134.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_134.jpg</span></td>
+        <td class="mono">119.25</td>
+        <td class="mono">119.25</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="9.0" data-pred="9.0">
+        <td style="color:#475569;font-size:0.78rem;">66</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_20.jpg" alt="jupiter_crop_20.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_20.jpg</span></td>
+        <td class="mono">9.0</td>
+        <td class="mono">9.0</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="r90" data-pred="r90">
+        <td style="color:#475569;font-size:0.78rem;">67</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/msil_crop_111.jpg" alt="msil_crop_111.jpg" /></td>
+        <td><span class="source-tag">msil</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">msil_crop_111.jpg</span></td>
+        <td class="mono">R90</td>
+        <td class="mono">R90</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="33.9" data-pred="33.9">
+        <td style="color:#475569;font-size:0.78rem;">68</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_42.jpg" alt="polaris_crop_42.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_42.jpg</span></td>
+        <td class="mono">33.9</td>
+        <td class="mono">33.9</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="9.9" data-pred="9.9">
+        <td style="color:#475569;font-size:0.78rem;">69</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_28.jpg" alt="jupiter_crop_28.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_28.jpg</span></td>
+        <td class="mono">9.9</td>
+        <td class="mono">9.9</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="0.0 min" data-pred="0.0 min">
+        <td style="color:#475569;font-size:0.78rem;">70</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_47.jpg" alt="jupiter_crop_47.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_47.jpg</span></td>
+        <td class="mono">0.0 MIN</td>
+        <td class="mono">0.0 MIN</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="10.1" data-pred="10.1">
+        <td style="color:#475569;font-size:0.78rem;">71</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_101.jpg" alt="jupiter_crop_101.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_101.jpg</span></td>
+        <td class="mono">10.1</td>
+        <td class="mono">10.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="3.1" data-pred="3.1">
+        <td style="color:#475569;font-size:0.78rem;">72</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_116.jpg" alt="jupiter_crop_116.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_116.jpg</span></td>
+        <td class="mono">3.1</td>
+        <td class="mono">3.1</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="61.08" data-pred="61.08">
+        <td style="color:#475569;font-size:0.78rem;">73</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/intra_crop_12.jpg" alt="intra_crop_12.jpg" /></td>
+        <td><span class="source-tag">intra</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">intra_crop_12.jpg</span></td>
+        <td class="mono">61.08</td>
+        <td class="mono">61.08</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="63.0°" data-pred="63.0°">
+        <td style="color:#475569;font-size:0.78rem;">74</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/jupiter_crop_33.jpg" alt="jupiter_crop_33.jpg" /></td>
+        <td><span class="source-tag">jupiter</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">jupiter_crop_33.jpg</span></td>
+        <td class="mono">63.0°</td>
+        <td class="mono">63.0°</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+      <tr data-status="correct" data-gt="184" data-pred="184">
+        <td style="color:#475569;font-size:0.78rem;">75</td>
+        <td class="img-cell"><img src="file:///d:/Cogentic/sign-detection/dataset_nived/dataset/test/crop_img/polaris_crop_23.jpg" alt="polaris_crop_23.jpg" /></td>
+        <td><span class="source-tag">polaris</span>&nbsp;<span style="color:#475569;font-size:0.75rem;">polaris_crop_23.jpg</span></td>
+        <td class="mono">184</td>
+        <td class="mono">184</td>
+        <td><span class="badge correct">✓ Correct</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">Generated by generate_actual_dataset_report.py · blueprint_ocr CRNN model</div>
+
+<script>
+  let currentFilter = 'all';
+
+  function filterRows(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applySearch();
+  }
+
+  function applySearch() {
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    document.querySelectorAll('#resultTable tbody tr').forEach(row => {
+      const status = row.dataset.status;
+      const gt     = row.dataset.gt   || '';
+      const pred   = row.dataset.pred || '';
+      const matchFilter = (currentFilter === 'all') || (status === currentFilter);
+      const matchSearch = !q || gt.includes(q) || pred.includes(q);
+      row.classList.toggle('hidden', !(matchFilter && matchSearch));
+    });
+  }
+</script>
+</body>
+</html>
