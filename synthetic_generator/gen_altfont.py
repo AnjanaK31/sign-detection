@@ -1,18 +1,17 @@
 """
-gen_altfont_test.py
--------------------
+gen_altfont.py
+--------------
 Generates synthetic TEST images using alternate fonts (Space Mono, Roboto Mono)
-that were NOT used during training. Heavily weighted toward >=, <=, and % strings
-which were previously missing from dict.txt.
+that were NOT used during training. Heavily weighted toward >=, <=, and % strings.
 
 Images are saved to:
-    dataset_nived/dataset/test/crop_img/altfont/
+    data/dataset/test/crop_img/altfont/
 
 Entries are APPENDED to:
-    dataset_nived/dataset/test/rec_gt.txt
+    data/dataset/test/rec_gt.txt
 
 Usage (from repo root):
-    python synthetic_generator/gen_altfont_test.py --n_texts 300 --n_aug 2
+    python synthetic_generator/gen_altfont.py --n_texts 300 --n_aug 2
 """
 
 import argparse
@@ -32,8 +31,8 @@ FONT_DIRS   = [
     REPO_ROOT / "synthetic_generator" / "fonts" / "Roboto_Mono,Space_Mono" / "Space_Mono",
     REPO_ROOT / "synthetic_generator" / "fonts" / "Roboto_Mono,Space_Mono" / "Roboto_Mono",
 ]
-OUT_IMG_DIR = REPO_ROOT / "dataset_nived" / "dataset" / "test" / "crop_img" / "altfont"
-LABEL_FILE  = REPO_ROOT / "dataset_nived" / "dataset" / "test" / "rec_gt.txt"
+OUT_IMG_DIR = REPO_ROOT / "data" / "dataset" / "test" / "crop_img" / "altfont"
+LABEL_FILE  = REPO_ROOT / "data" / "dataset" / "test" / "rec_gt.txt"
 
 # ---------------------------------------------------------------------------
 # Text generators (focused on failure characters)

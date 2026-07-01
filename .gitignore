@@ -1,11 +1,12 @@
-dataset_nived/
+﻿# Dataset (not distributed with code)
+data/
 synthetic_data/
 synthetic_generator/fonts/
 
 # Python cache
 __pycache__/
 *.pyc
-synthetic_generator/__pycache__/
+**/__pycache__/
 
 # Model weights tracked via Git LFS (see .gitattributes)
 # 96accuracy/ is a local backup folder only
@@ -14,6 +15,7 @@ synthetic_generator/__pycache__/
 # Generated HTML reports
 evaluation_report*.html
 actual_dataset_report.html
+report.html
 
-# Debug images
+# Debug artefacts
 debug_network_input.jpg
