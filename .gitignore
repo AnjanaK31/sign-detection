@@ -7,8 +7,8 @@ __pycache__/
 *.pyc
 synthetic_generator/__pycache__/
 
-# Model weights (large binary files)
-*.pth
+# Model weights tracked via Git LFS (see .gitattributes)
+# 96accuracy/ is a local backup folder only
 96accuracy/
 
 # Generated HTML reports
