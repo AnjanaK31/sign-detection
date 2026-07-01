@@ -105,9 +105,24 @@ def gen_less_than() -> str:
 
 # ── >=  Greater-than-or-equal ─────────────────────────────────────────────────
 def gen_gte() -> str:
-    # real: >=1.67
-    val = _val(0.5, 10, 2)
-    return random.choice([f">={val}", f"≥{val}"])
+    # real: >=1.67, ≥98%
+    val = _val(0.5, 200, 2)
+    unit = random.choice(["", "%", "mm"])
+    return random.choice([f">={val}{unit}", f"≥{val}{unit}"])
+
+# ── <=  Less-than-or-equal ────────────────────────────────────────────────────
+def gen_lte() -> str:
+    # mirror of gen_gte: <=0.05, ≤500 µm
+    val = _val(0.5, 200, 2)
+    unit = random.choice(["", "%", "mm", "µm"])
+    return random.choice([f"<={val}{unit}", f"≤{val}{unit}"])
+
+# ── %  Percentage ─────────────────────────────────────────────────────────────
+def gen_percentage() -> str:
+    # real: >40%, <98%, ≥95%, efficiency specs in CAD notes
+    val = _val(1, 100, random.choice([0, 1]))
+    prefix = random.choice([">" , "<", "≥", "≤", ""])
+    return f"{prefix}{val}%"
 
 # ── "  Inches ─────────────────────────────────────────────────────────────────
 def gen_inches() -> str:
@@ -340,8 +355,8 @@ GENERATORS = [
     (gen_angle,           8),    # bumped: now includes toleranced angle 35°±3°
     (gen_thread,          3),    # bumped: now includes × quantity prefix
     (gen_radius,          1),
-    (gen_greater_than,    1),
-    (gen_less_than,       1),
+    (gen_greater_than,    3),    # bumped: > + % combos
+    (gen_less_than,       3),    # bumped: symmetric with greater_than
     (gen_limit_tolerance, 1),
     (gen_max,             1),
     (gen_min,             1),
@@ -353,7 +368,9 @@ GENERATORS = [
     (gen_hyphen,          1),    # ensures - in character set
     (gen_plus,            1),    # ensures + in character set
     (gen_micro,           1),    # ensures µ in character set
-    (gen_gte,             1),
+    (gen_gte,             8),    # bumped: ≥ was a failure case, was missing from dict
+    (gen_lte,             8),    # new: ≤ symmetric coverage
+    (gen_percentage,      6),    # new: % was missing from dict
     (gen_inches,          3),
     (gen_sph_radius,      1),
     (gen_typ,             1),

@@ -396,7 +396,8 @@ def train_mini_jig(epochs=50, batch_size=8, lr=1e-4, save_path="best_model.pth")
                     decoded_texts = greedy_ctc_decoder(sample_logits.cpu(), dataset.idx2char)
                     print("  Sample Predictions:")
                     for j in range(min(2, len(decoded_texts))):
-                        print(f"    Pred: '{decoded_texts[j]}'")
+                        safe_pred = decoded_texts[j].encode('ascii', errors='backslashreplace').decode('ascii')
+                        print(f"    Pred: '{safe_pred}'")
                 model.train()
                 
         avg_loss   = epoch_loss / len(dataloader)
@@ -470,7 +471,7 @@ def test_inference_on_crop(model_weights_path=None, test_image_path=None):
 if __name__ == "__main__":
     print("CRNN OCR Pipeline Initialized.")
     # Kick off training
-    train_mini_jig(epochs=15, batch_size=8)
+    train_mini_jig(epochs=50, batch_size=8)
     
     # Example of how to run inference later:
     # test_inference_on_crop(model_weights_path="best_model.pth", test_image_path="path_to_your_crop.jpg")

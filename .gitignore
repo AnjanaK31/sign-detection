@@ -1,3 +1,19 @@
 dataset_nived/
 synthetic_data/
 synthetic_generator/fonts/
+
+# Python cache
+__pycache__/
+*.pyc
+synthetic_generator/__pycache__/
+
+# Model weights (large binary files)
+*.pth
+96accuracy/
+
+# Generated HTML reports
+evaluation_report*.html
+actual_dataset_report.html
+
+# Debug images
+debug_network_input.jpg
