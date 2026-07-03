@@ -1,4 +1,4 @@
-﻿"""
+"""
 evaluate.py — Evaluate a trained CRNN model on a test set.
 
 Usage:
@@ -99,7 +99,7 @@ def evaluate(args):
                 correct += 1
             total += 1
 
-            abs_path = "file:///" + str(img_path).replace("\\", "/")
+            abs_path = str(img_path.resolve())
             results.append((abs_path, gt_text, decoded, is_correct))
 
     accuracy = (correct / total * 100) if total else 0.0
@@ -116,16 +116,21 @@ def evaluate(args):
 
 
 def _write_html(results, correct, total, accuracy, out_path):
+    import os
     results_sorted = sorted(results, key=lambda x: x[3])   # incorrect first
     acc_color = "#27ae60" if accuracy > 70 else "#e74c3c"
+    html_dir  = os.path.dirname(os.path.abspath(out_path))
 
     rows = ""
     for img_path, gt, pred, ok in results_sorted:
-        cls  = "correct" if ok else "incorrect"
+        cls   = "correct" if ok else "incorrect"
         label = "Correct" if ok else "Incorrect"
+        # Relative path from the HTML file to the image — works in all browsers
+        # for local file:// access without any encoding or server needed
+        rel   = os.path.relpath(img_path, html_dir).replace("\\", "/")
         rows += (
-            f"<tr>"
-            f"<td><img src='{img_path}' alt='crop'/></td>"
+            f"<tr class='row-{cls}'>"
+            f"<td><img src='{rel}' alt='crop'/></td>"
             f"<td>{gt}</td><td>{pred}</td>"
             f"<td class='{cls}'>{label}</td>"
             f"</tr>\n"
@@ -144,10 +149,13 @@ h1{{text-align:center;color:#2c3e50}}
 .box{{text-align:center}} .box h2{{margin:0;font-size:2em}} .box p{{margin:5px 0 0;color:#7f8c8d}}
 table{{width:100%;border-collapse:collapse;background:#fff;
        box-shadow:0 4px 6px rgba(0,0,0,.1);border-radius:8px;overflow:hidden}}
-th,td{{padding:15px;text-align:left;border-bottom:1px solid #ddd}}
+th,td{{padding:12px 15px;text-align:left;border-bottom:1px solid #ddd}}
 th{{background:#2c3e50;color:#fff}} tr:hover{{background:#f1f1f1}}
 .correct{{color:#27ae60;font-weight:bold}} .incorrect{{color:#e74c3c;font-weight:bold}}
-img{{height:40px;border:1px solid #ccc}}
+.row-correct{{display:none}}
+img{{height:40px;border:1px solid #ccc;border-radius:3px}}
+.toggle-btn{{display:block;margin:0 auto 16px;padding:8px 20px;background:#2c3e50;
+             color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px}}
 </style>
 </head>
 <body>
@@ -158,10 +166,20 @@ img{{height:40px;border:1px solid #ccc}}
   <div class="box"><h2>{total-correct}</h2><p>Incorrect</p></div>
   <div class="box"><h2 style="color:{acc_color}">{accuracy:.2f}%</h2><p>Accuracy</p></div>
 </div>
+<button class="toggle-btn" onclick="toggleCorrect(this)">Show Correct Rows</button>
 <table>
 <tr><th>Image</th><th>Ground Truth</th><th>Prediction</th><th>Status</th></tr>
 {rows}
 </table>
+<script>
+function toggleCorrect(btn) {{
+  var rows = document.querySelectorAll('.row-correct');
+  if (!rows.length) return;
+  var isHidden = getComputedStyle(rows[0]).display === 'none';
+  rows.forEach(function(r) {{ r.style.display = isHidden ? 'table-row' : 'none'; }});
+  btn.textContent = isHidden ? 'Hide Correct Rows' : 'Show Correct Rows';
+}}
+</script>
 </body></html>"""
 
     with open(out_path, "w", encoding="utf-8") as f:
